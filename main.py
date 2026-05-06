@@ -144,6 +144,11 @@ class MessageStatsPlugin(Star):
         self._web_group_name_cache: Dict[str, str] = {}
         self._load_group_names()
         
+        # ---------- 脏标记批量保存优化 ----------
+        self._umo_dirty = False          # UMO 脏标记
+        self._group_names_dirty = False  # 群名脏标记
+        self._save_task: Optional[asyncio.Task] = None  # 后台保存任务
+        
         # 成员缓存管理器 - 管理群成员列表缓存和用户昵称缓存
         # 使用分层缓存策略（昵称缓存 → 字典缓存 → API获取），
         # 并在API请求外层添加异步锁防止缓存击穿
@@ -327,8 +332,8 @@ class MessageStatsPlugin(Star):
                 # 这样无论 timer_target_groups 中填的是群号还是 unified_msg_origin 都能匹配
                 self.group_unified_msg_origins[unified_msg_origin] = unified_msg_origin
                 
-                # 持久化到文件（重启后自动恢复）
-                self._save_unified_msg_origins()
+                # 标记 UMO 脏标记，由后台批量保存
+                self._umo_dirty = True
                 
                 if old_origin != unified_msg_origin:
                     self.logger.info(f"已收集群组 {group_id} 的 unified_msg_origin")
@@ -391,7 +396,7 @@ class MessageStatsPlugin(Star):
                 old_name = self._web_group_name_cache.get(group_id_str)
                 if old_name != group_name:
                     self._web_group_name_cache[group_id_str] = group_name
-                    self._save_group_names()
+                    self._group_names_dirty = True
                     self.logger.info(f"已获取群组 {group_id} 的名称: {group_name}")
                 
                 # 更新到 timer_manager 的内存缓存
@@ -454,6 +459,9 @@ class MessageStatsPlugin(Star):
             
             # 步骤5: 设置缓存和最终初始化状态
             await self._setup_caches()
+            
+            # 启动后台批量保存任务（优化A）
+            await self._start_background_save()
             
             self.logger.info("群发言统计插件初始化完成")
             
@@ -575,29 +583,55 @@ class MessageStatsPlugin(Star):
                 self.logger.warning(f"定时任务启动失败(参数错误): {e}")
                 # 不影响插件的正常使用
     
+    # ========== 脏标记批量保存（优化A） ==========
+    
+    async def _start_background_save(self):
+        """启动后台批量保存任务，每5分钟刷一次脏数据到磁盘"""
+        if self._save_task and not self._save_task.done():
+            return
+        self._save_task = asyncio.create_task(self._background_save_loop())
+        self.logger.debug("后台批量保存任务已启动")
+    
+    async def _stop_background_save(self):
+        """停止后台保存任务并立即刷盘"""
+        if self._save_task and not self._save_task.done():
+            self._save_task.cancel()
+            try:
+                await self._save_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._save_task = None
+        # 停止时强制刷所有脏数据
+        await self._flush_dirty_data()
+    
+    async def _flush_dirty_data(self):
+        """刷所有脏标记的数据到磁盘"""
+        if self._umo_dirty:
+            self._save_unified_msg_origins()
+            self._umo_dirty = False
+        if self._group_names_dirty:
+            self._save_group_names()
+            self._group_names_dirty = False
+    
+    async def _background_save_loop(self):
+        """后台循环：每5分钟检查并写入脏数据"""
+        try:
+            while True:
+                await asyncio.sleep(600)  # 10分钟（仅检查脏标记，无脏数据不写盘）
+                await self._flush_dirty_data()
+        except asyncio.CancelledError:
+            await self._flush_dirty_data()
+            raise
+    
     async def terminate(self):
-        """插件卸载清理
-        
-        异步清理插件的所有资源,包括浏览器实例、缓存和临时文件.
-        确保插件卸载时不会留下资源泄漏.
-        
-        Raises:
-            OSError: 当清理文件或目录失败时抛出
-            IOError: 当文件操作失败时抛出
-            Exception: 其他清理相关的异常
-            
-        Returns:
-            None: 无返回值,清理完成后设置initialized状态为False
-            
-        Example:
-            >>> await plugin.terminate()
-            >>> print(plugin.initialized)
-            False
-        """
+        """插件卸载清理"""
         try:
             self.logger.info("群发言统计插件卸载中...")
             
-            # 刷新所有脏数据到磁盘（延迟写入优化）
+            # 停止后台保存并刷脏数据
+            await self._stop_background_save()
+            
+            # 刷新数据管理器的脏数据
             await self.data_manager.flush_all()
             
             # 清理图片生成器

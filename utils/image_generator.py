@@ -1071,32 +1071,37 @@ class ImageGenerator:
         }
     
     def _get_safe_content(self, item_data: Dict[str, Any]) -> Dict[str, str]:
-        """获取安全的内容（优化版本）"""
-        # 批量转义提高性能
-        safe_nickname = self._escape_html_safe(str(item_data.get('nickname', '未知用户')))
-        safe_last_date = self._escape_html_safe(str(item_data.get('last_date', '未知')))
-        safe_avatar_url = self._validate_url_safe(str(item_data.get('avatar_url', '')))
+        """获取安全的内容（优化版本）
         
-        # 处理头衔转义
+        注意：不在此处进行 HTML 转义，转义推迟到最终渲染阶段：
+        - Jinja2 路径：模板引擎的 autoescape 自动处理
+        - Fallback 路径：_generate_user_item_html_safe 中手动转义
+        避免重复转义导致 &amp; 等乱码。
+        """
+        # 不做HTML转义，仅提取原始值（转义由接收方负责）
+        nickname = str(item_data.get('nickname', '未知用户'))
+        last_date = str(item_data.get('last_date', '未知'))
+        avatar_url = self._validate_url_safe(str(item_data.get('avatar_url', '')))
+        
+        # 处理头衔
         title = item_data.get('title', None)
-        safe_title = self._escape_html_safe(str(title)) if title else None
         
         # 如果头像URL无效，使用回退彩色文字头像
-        if not safe_avatar_url:
-            safe_avatar_url = self._get_avatar_url(
+        if not avatar_url:
+            avatar_url = self._get_avatar_url(
                 str(item_data.get('user_id', '0')),
                 str(item_data.get('nickname', '')),
                 item_data.get('_group_info', None)
             )
         
         content = {
-            'nickname': safe_nickname,
-            'last_date': safe_last_date,
-            'avatar_url': safe_avatar_url
+            'nickname': nickname,
+            'last_date': last_date,
+            'avatar_url': avatar_url
         }
         
-        if safe_title:
-            content['title'] = safe_title
+        if title:
+            content['title'] = title
             
         return content
 
