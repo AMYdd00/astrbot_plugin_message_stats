@@ -617,7 +617,7 @@ class MessageStatsPlugin(Star):
         """后台循环：每5分钟检查并写入脏数据"""
         try:
             while True:
-                await asyncio.sleep(300)  # 5分钟
+                await asyncio.sleep(600)  # 10分钟（仅检查脏标记，无脏数据不写盘）
                 await self._flush_dirty_data()
         except asyncio.CancelledError:
             await self._flush_dirty_data()
