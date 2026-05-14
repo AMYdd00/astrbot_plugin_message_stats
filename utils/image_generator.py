@@ -71,6 +71,54 @@ class ImageGenerationError(Exception):
     pass
 
 
+_AVATAR_COLORS = ['#F59E0B','#3B82F6','#8B5CF6','#EC4899','#10B981','#EF4444','#14B8A6','#F97316','#6366F1','#84CC16','#06B6D4','#D946EF','#0EA5E9','#EAB308','#A855F7']
+
+def _gen_bubble_layout(users, cw=920, ch=580):
+    import math, random; n = len(users)
+    if n == 0: return [], [], []
+    max_msg = max(u.display_total if u.display_total is not None else u.message_count for u in users)
+    sqrt_max = max(1, math.sqrt(max_msg))
+    sizes = [max(80, min(180, 80 + math.sqrt(u.display_total if u.display_total is not None else u.message_count) / sqrt_max * 100)) for u in users]
+    fonts = [max(12, min(24, 12 + (s-80)/100 * 12)) for s in sizes]
+    placed, raw_pos = [], []
+    def overlaps(x, y, r):
+        for px, py, pr in placed:
+            dx, dy = x - px, y - py
+            if dx*dx + dy*dy < (r + pr + 2)**2: return True
+        return False
+    random.seed(42)
+    jitter = lambda: (random.random() - 0.5) * 0.3
+    for i in range(n):
+        r = sizes[i]/2
+        if i == 0: bx, by = 0 + jitter(), 0 + jitter()
+        else:
+            ta = math.atan2(-placed[0][1], -placed[0][0]) + i * 1.618; found = False
+            for st in range(1, 800):
+                sr = 6 + st * 1.5
+                for ao in range(16):
+                    a = ta + ao * math.pi / 8
+                    tx, ty = math.cos(a) * sr + jitter(), math.sin(a) * sr + jitter()
+                    if not overlaps(tx, ty, sizes[i]/2): bx, by = tx, ty; found = True; break
+                if found: break
+            if not found: bx, by = 0, 0
+        raw_pos.append((bx, by)); placed.append((bx, by, sizes[i]/2))
+    min_x = min(p[0]-sizes[i]/2 for i,p in enumerate(raw_pos))
+    max_x = max(p[0]+sizes[i]/2 for i,p in enumerate(raw_pos))
+    min_y = min(p[1]-sizes[i]/2 for i,p in enumerate(raw_pos))
+    max_y = max(p[1]+sizes[i]/2 for i,p in enumerate(raw_pos))
+    sx, sy = (cw-80)/max(1,max_x-min_x), (ch-80)/max(1,max_y-min_y)
+    scale = min(1.0, min(sx, sy))
+    cx, cy = cw/2, ch/2
+    bcx, bcy = (min_x+max_x)/2, (min_y+max_y)/2
+    ox, oy = cx - bcx * scale, cy - bcy * scale
+    fs2, ff2, fp2 = [], [], []
+    for i in range(n):
+        fx, fy = raw_pos[i][0] * scale + ox, raw_pos[i][1] * scale + oy
+        fs = max(60, sizes[i] * scale); ff = max(10, fonts[i] * scale)
+        fs2.append(int(fs)); ff2.append(int(ff)); fp2.append((int(fx - fs/2), int(fy - fs/2)))
+    return fs2, ff2, fp2
+
+
 class ImageGenerator:
     """图片生成器
     
@@ -156,6 +204,8 @@ class ImageGenerator:
             'default': 'rank_template.html',
             'liquid_glass': 'rank_template_liquid_glass.html',
             'liquid_glass_dark': 'rank_template_liquid_glass_dark.html',
+            'bubble': 'rank_template_bubble.html',
+            'bubble_dark': 'rank_template_bubble_dark.html',
         }
         template_file = template_map.get(theme, 'rank_template.html')
         self.template_path = self._templates_dir / template_file
@@ -195,8 +245,8 @@ class ImageGenerator:
                 # 浅色时间段：使用用户配置的浅色主题
                 return base_theme
             else:
-                # 深色时间段：使用液态玻璃深色主题
-                return 'liquid_glass_dark'
+                dark_map = {'liquid_glass': 'liquid_glass_dark', 'default': 'liquid_glass_dark', 'bubble': 'bubble_dark'}
+                return dark_map.get(base_theme, 'liquid_glass_dark')
         except (ValueError, AttributeError, KeyError, TypeError) as e:
             self.logger.warning(f"自动主题切换时间解析失败，使用默认主题: {e}")
             return base_theme
@@ -762,6 +812,11 @@ class ImageGenerator:
         total_messages = sum(user.display_total if user.display_total is not None else user.message_count for user in users)
         
         # 批量生成用户项目
+        sizes, fonts, pos = _gen_bubble_layout(users)
+        if len(sizes) < len(users):
+            sizes.extend([70] * (len(users) - len(sizes)))
+            fonts.extend([10] * (len(users) - len(fonts)))
+            pos.extend([(400, 280)] * (len(users) - len(pos)))
         user_items = []
         current_user_found = False
         
@@ -791,6 +846,9 @@ class ImageGenerator:
             if user_title:
                 self.logger.info(f"头衔数据: {user.nickname} -> 「{user_title}」")
             
+            c = _AVATAR_COLORS[sum(ord(ch) for ch in str(user.user_id)) % 15]
+            idx = _AVATAR_COLORS.index(c) if c in _AVATAR_COLORS else sum(ord(ch) for ch in str(user.user_id)) % 15
+            g2 = _AVATAR_COLORS[(idx + 5) % 15]
             user_items.append({
                 'rank': i + 1,
                 'nickname': user.nickname,
@@ -802,7 +860,8 @@ class ImageGenerator:
                 'last_date': user.last_date or "未知",
                 'is_current_user': is_current_user,
                 'is_separator': False,
-                '_group_info': group_info
+                'bubble_size': sizes[i], 'bubble_font': fonts[i], 'pos_x': pos[i][0], 'pos_y': pos[i][1],
+                'card_grad1': c, 'card_grad2': g2, '_group_info': group_info
             })
         
         # 如果当前用户不在排行榜中，添加到末尾

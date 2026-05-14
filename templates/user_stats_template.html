@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https:;">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发言统计</title>
+    <style>
+        {% raw %}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===== 苹果 SF Pro 字体栈 ===== */
+        body {
+            font-family: -apple-system, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ===== 浅色主题 ===== */
+        body.light {
+            background: linear-gradient(135deg, #E9EFF6 0%, #D6E4F0 100%);
+            color: #1F2937;
+        }
+        body.light .card {
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        body.light .nickname { color: #1F2937; }
+        body.light .group-name { color: #6B7280; }
+        body.light .stat-item { background: rgba(255, 255, 255, 0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 4px 8px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.5); }
+        body.light .stat-label { color: #6B7280; }
+        body.light .stat-sub { color: #9CA3AF; }
+        body.light .footer { color: #9CA3AF; border-top-color: rgba(229, 231, 235, 0.6); }
+        body.light .divider { background: rgba(229, 231, 235, 0.6); }
+
+        /* ===== 深色主题 ===== */
+        body.dark {
+            background: linear-gradient(135deg, #2a2d3e 0%, #253247 100%);
+            color: #E5E7EB;
+        }
+        body.dark .card {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        body.dark .nickname { color: #F3F4F6; }
+        body.dark .group-name { color: #9CA3AF; }
+        body.dark .stat-item { background: rgba(255, 255, 255, 0.06); box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); }
+        body.dark .stat-label { color: #9CA3AF; }
+        body.dark .stat-sub { color: #6B7280; }
+        body.dark .footer { color: #6B7280; border-top-color: rgba(255,255,255,0.06); }
+        body.dark .divider { background: rgba(255,255,255,0.06); }
+        body.dark .total-section { background: rgba(255, 255, 255, 0.06); box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: none; -webkit-backdrop-filter: none; }
+        body.dark .total-label { color: #9CA3AF; }
+        body.dark .total-value { color: #ff4466; }
+        body.dark .total-sub { color: #6B7280; }
+
+        .container { width: 480px; }
+
+        .card {
+            border-radius: 24px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        /* ===== 头部 ===== */
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 28px;
+            padding-bottom: 24px;
+        }
+        .divider {
+            height: 1px;
+            width: 100%;
+            margin-bottom: 28px;
+        }
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.4);
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .avatar-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 34px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .user-info { flex: 1; min-width: 0; }
+
+        /* ===== 总发言：昵称下方居中 ===== */
+        .total-section {
+            text-align: center;
+            margin: 8px 0 20px 0;
+            padding: 12px 0;
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 4px 8px rgba(0, 0, 0, 0.04);
+        }
+        .total-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #6B7280;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .total-value {
+            font-size: 48px;
+            font-weight: 800;
+            color: #ff2244;
+            letter-spacing: -1.5px;
+            font-feature-settings: "tnum";
+            line-height: 1.1;
+        }
+        .total-sub {
+            font-size: 13px;
+            font-weight: 500;
+            color: #9CA3AF;
+            margin-top: 2px;
+        }
+
+        /* ===== 统计网格 ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .stat-item {
+            border-radius: 16px;
+            padding: 20px 14px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .stat-label {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .stat-value {
+            font-size: 42px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -1.5px;
+            font-feature-settings: "tnum";
+        }
+        .stat-value.daily { color: #3B82F6; }
+        .stat-value.yesterday { color: #F59E0B; }
+        .stat-value.weekly { color: #8B5CF6; }
+        .stat-value.monthly { color: #10B981; }
+        .stat-sub {
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+
+        /* ===== 底部 ===== */
+        .footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+                .nickname-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            max-width: 100%;
+        }
+        .nickname {
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1.25;
+            letter-spacing: -0.3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 70%;
+            flex-shrink: 1;
+        }
+        .user-title {
+            font-size: 13px;
+            font-weight: 700;
+            padding: 0 8px;
+            border-radius: 10px;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            display: inline-block;
+            line-height: 24px;
+        }
+        .group-name {
+            font-size: 15px;
+            font-weight: 500;
+            margin-top: 4px;
+        }
+    {% endraw %}
+    </style>
+</head>
+<body class="{% if is_dark %}dark{% else %}light{% endif %}">
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                {% if avatar_url %}
+                <img class="avatar" src="{{ avatar_url }}" alt="avatar"/>
+                {% else %}
+                <div class="avatar-placeholder">{{ nickname[:1] }}</div>
+                {% endif %}
+                <div class="user-info">
+                    <div class="nickname-row">
+                        <div class="nickname" title="{{ nickname }}">{{ nickname }}</div>
+                        {% if title %}
+                        <div class="user-title" style="color:{{ title_color or '#7C3AED' }};background:{{ (title_color or '#7C3AED') + '22' }};">「{{ title }}」</div>
+                        {% endif %}
+                    </div>
+                    <div class="group-name">{{ group_name }}[{{ group_id }}]</div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <div class="total-section">
+                <div class="total-label">总发言</div>
+                <div class="total-value">{{ total_count }}</div>
+                <div class="total-sub">累计</div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">今日发言</div>
+                    <div class="stat-value daily">{{ daily_count }}</div>
+                    <div class="stat-sub">{{ current_date }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">昨日发言</div>
+                    <div class="stat-value yesterday">{{ yesterday_count }}</div>
+                    <div class="stat-sub">{{ yesterday_date }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">本周发言</div>
+                    <div class="stat-value weekly">{{ weekly_count }}</div>
+                    <div class="stat-sub">本周累计</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">本月发言</div>
+                    <div class="stat-value monthly">{{ monthly_count }}</div>
+                    <div class="stat-sub">本月累计</div>
+                </div>
+            </div>
+
+            <div class="footer">
+            <p>🤖 由 AstrBot 发言统计插件生成</p>
+            <p>生成时间: {{ current_time }}</p>
+        </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -561,8 +561,8 @@ class PluginConfig:
         config.is_admin_restricted = data.get("is_admin_restricted", 0)
         config.rand = data.get("rand", 20)
         config.if_send_pic = if_send_pic
-        config.detailed_logging_enabled = data.get("detailed_logging_enabled", True)
-        config.timer_enabled = data.get("timer_enabled", False)
+        config.detailed_logging_enabled = bool(data.get("detailed_logging_enabled")) if data.get("detailed_logging_enabled") is not None else True
+        config.timer_enabled = bool(data.get("timer_enabled"))
         config.timer_push_time = data.get("timer_push_time", "09:00")
         config.timer_target_groups = data.get("timer_target_groups", [])
         config.timer_rank_type = data.get("timer_rank_type", "daily")
