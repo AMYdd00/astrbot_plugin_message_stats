@@ -1,4 +1,199 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head><meta charset="UTF-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https:;"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>{{ title }}</title><style>{% raw %}*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,"SF Pro Display","SF Pro Text","Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);min-height:100vh;padding:50px 40px;color:#F5F5F7;-webkit-font-smoothing:antialiased}.container{max-width:1000px;margin:0 auto}.header{text-align:center;margin-bottom:36px;background:rgba(255,255,255,.06);backdrop-filter:blur(20px);border-radius:24px;padding:28px 24px 24px;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 32px rgba(0,0,0,.2)}.group-info{font-size:15px;color:#98989D;font-weight:500}.title{font-size:34px;color:#F5F5F7;font-weight:700;letter-spacing:-.5px}.total-messages{font-size:14px;color:#98989D}.bubble-area{position:relative;width:100%;min-height:640px;background:rgba(255,255,255,.03);border-radius:32px;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.06);padding:10px}.bubble{position:absolute;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;transition:all .4s cubic-bezier(.34,1.56,.64,1);box-shadow:0 8px 32px rgba(0,0,0,.25),0 2px 8px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(0,0,0,.1)}.bubble:hover{transform:scale(1.12) translateY(-4px);z-index:100}.bubble .glass-layer{position:absolute;top:0;left:0;right:0;bottom:0;border-radius:50%;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.15) 0%,rgba(255,255,255,.03) 40%,transparent 100%);z-index:1}.bubble .glass-shine{position:absolute;top:6%;left:15%;right:15%;height:30%;border-radius:50%;pointer-events:none;background:radial-gradient(ellipse at center,rgba(255,255,255,.2) 0%,transparent 70%);z-index:1}.bubble .avatar{border-radius:50%;border:2px solid rgba(255,255,255,.4);object-fit:cover;box-shadow:0 4px 12px rgba(0,0,0,.2);position:relative;z-index:2}.bubble .content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;padding:0 12%}.bubble .count{font-weight:800;color:#FFF;text-shadow:0 2px 12px rgba(0,0,0,.35);letter-spacing:-.5px;line-height:1.1}.bubble .nickname{font-weight:700;color:#FFF;text-shadow:0 1px 6px rgba(0,0,0,.25);line-height:1.2;max-width:85%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}.bubble .title-badge{display:inline-block;font-weight:700;white-space:nowrap;border-radius:6px;line-height:1.3;margin-top:2px;padding:1px 6px;max-width:80%;backdrop-filter:blur(4px)}.bubble .medal{position:absolute;top:-2px;right:-2px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.3);background:rgba(255,255,255,.9);z-index:4}.bubble-current{box-shadow:0 0 0 3px rgba(168,85,247,.4),0 8px 32px rgba(168,85,247,.2),inset 0 1px 0 rgba(255,255,255,.12)!important;animation:pulse 2.5s ease-in-out infinite}@keyframes pulse{0%{box-shadow:0 0 0 3px rgba(168,85,247,.3),0 8px 32px rgba(168,85,247,.12),inset 0 1px 0 rgba(255,255,255,.12)}50%{box-shadow:0 0 0 5px rgba(168,85,247,.5),0 12px 40px rgba(168,85,247,.25),inset 0 1px 0 rgba(255,255,255,.12)}100%{box-shadow:0 0 0 3px rgba(168,85,247,.3),0 8px 32px rgba(168,85,247,.12),inset 0 1px 0 rgba(255,255,255,.12)}}.bubble-area-pattern{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;background-image:radial-gradient(circle at 50% 50%,rgba(255,255,255,.06) 1px,transparent 1px);background-size:24px 24px;border-radius:32px}.footer{text-align:center;margin-top:20px;color:#98989D;font-size:13px}.footer p{margin:3px 0}{% endraw %}</style></head>
-<body><div class=container><div class=header><div class=group-info>{{ group_name if group_name != group_id else "群" + group_id }}[{{ group_id }}]</div><div class=title>{{ title }}</div><div class=total-messages>总发言数：{{ total_messages }} 条</div></div><div class=bubble-area><div class=bubble-area-pattern></div>{% for item in user_items %}{% set g1 = item.card_grad1 or '#3B82F6' %}{% set g2 = item.card_grad2 or '#8B5CF6' %}{% set medal_icon = "🥇" if item.rank == 1 else ("🥈" if item.rank == 2 else ("🥉" if item.rank == 3 else "")) %}{% set avatar_sz = (item.bubble_size * 0.32)|int %}{% set count_sz = (item.bubble_font * 1.25)|int %}{% if count_sz < 12 %}{% set count_sz = 12 %}{% endif %}{% set name_sz = (item.bubble_font * 0.8)|int %}{% if name_sz < 10 %}{% set name_sz = 10 %}{% endif %}{% set title_sz = (item.bubble_font * 0.65)|int %}{% if title_sz < 9 %}{% set title_sz = 9 %}{% endif %}<div class="bubble{{ ' bubble-current' if item.is_current_user else '' }}" style="width:{{ item.bubble_size }}px;height:{{ item.bubble_size }}px;left:{{ item.pos_x }}px;top:{{ item.pos_y }}px;background:linear-gradient(145deg,{{ g1 }}bb,{{ g2 }}99)"><div class=glass-layer></div><div class=glass-shine></div>{% if medal_icon %}<div class=medal>{{ medal_icon }}</div>{% endif %}<div class=content><img class=avatar src="{{ item.avatar_url }}" style="width:{{ avatar_sz }}px;height:{{ avatar_sz }}px"><div class=count style="font-size:{{ count_sz }}px;margin-top:3px">{{ item.total }}</div><div class=nickname style="font-size:{{ name_sz }}px">{{ item.nickname }}</div>{% if item.title %}<div class=title-badge style="font-size:{{ title_sz }}px;color:#FFF;background:{{ (item.title_color or '#7C3AED') + '55' }};border:1px solid {{ (item.title_color or '#7C3AED') + '44' }}">「{{ item.title }}」</div>{% endif %}</div></div>{% endfor %}</div><div class=footer><p>🤖 由 AstrBot 发言统计插件生成</p><p>生成时间: {{ current_time }}</p>{% if llm_token_info %}<p style=font-size:12px>{{ llm_token_info }}</p>{% endif %}</div></div></body></html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https:;">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        {% raw %}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 50px 40px;
+            color: #F5F5F7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        .header {
+            text-align: center;
+            margin-bottom: 36px;
+            background: rgba(255,255,255,.06);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 28px 24px 24px;
+            border: 1px solid rgba(255,255,255,.08);
+            box-shadow: 0 8px 32px rgba(0,0,0,.2);
+        }
+
+        .group-info { font-size: 15px; color: #98989D; font-weight: 500; }
+        .title { font-size: 34px; color: #F5F5F7; font-weight: 700; letter-spacing: -.5px; }
+        .total-messages { font-size: 14px; color: #98989D; }
+
+        .bubble-area {
+            position: relative;
+            width: 100%;
+            min-height: 640px;
+            background: rgba(255,255,255,.03);
+            border-radius: 32px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,.06);
+            padding: 10px;
+        }
+
+        .bubble-area-pattern {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,.06) 1px, transparent 1px);
+            background-size: 24px 24px;
+            border-radius: 32px;
+        }
+
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: hidden;
+            transition: all .4s cubic-bezier(.34,1.56,.64,1);
+            box-shadow: 0 8px 32px rgba(0,0,0,.25), 0 2px 8px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -1px 0 rgba(0,0,0,.1);
+        }
+        .bubble:hover { transform: scale(1.12) translateY(-4px); z-index: 100; }
+
+        .bubble .glass-layer {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 50%;
+            pointer-events: none;
+            background: linear-gradient(135deg, rgba(255,255,255,.15) 0%, rgba(255,255,255,.03) 40%, transparent 100%);
+            z-index: 1;
+        }
+
+        .bubble .glass-shine {
+            position: absolute; top: 6%; left: 15%; right: 15%; height: 30%;
+            border-radius: 50%;
+            pointer-events: none;
+            background: radial-gradient(ellipse at center, rgba(255,255,255,.2) 0%, transparent 70%);
+            z-index: 1;
+        }
+
+        .bubble .avatar {
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,.4);
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0,0,0,.2);
+            position: relative;
+            z-index: 2;
+        }
+
+        .bubble .content {
+            position: relative; z-index: 2;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            width: 100%; padding: 0 12%;
+        }
+
+        .bubble .count {
+            font-weight: 800; color: #FFF;
+            text-shadow: 0 2px 12px rgba(0,0,0,.35);
+            letter-spacing: -.5px; line-height: 1.1;
+        }
+
+        .bubble .nickname {
+            font-weight: 700; color: #FFF;
+            text-shadow: 0 1px 6px rgba(0,0,0,.25);
+            line-height: 1.2; max-width: 85%;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            margin-top: 2px;
+        }
+
+        .bubble .title-badge {
+            display: inline-block; font-weight: 700; white-space: nowrap;
+            border-radius: 6px; line-height: 1.3; margin-top: 2px;
+            padding: 1px 6px; max-width: 80%;
+            backdrop-filter: blur(4px);
+        }
+
+        .bubble .medal {
+            position: absolute; top: -2px; right: -2px;
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.3);
+            background: rgba(255,255,255,.9); z-index: 4;
+        }
+
+        .bubble-current {
+            box-shadow: 0 0 0 3px rgba(168,85,247,.4), 0 8px 32px rgba(168,85,247,.2), inset 0 1px 0 rgba(255,255,255,.12) !important;
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%   { box-shadow: 0 0 0 3px rgba(168,85,247,.3), 0 8px 32px rgba(168,85,247,.12), inset 0 1px 0 rgba(255,255,255,.12); }
+            50%  { box-shadow: 0 0 0 5px rgba(168,85,247,.5), 0 12px 40px rgba(168,85,247,.25), inset 0 1px 0 rgba(255,255,255,.12); }
+            100% { box-shadow: 0 0 0 3px rgba(168,85,247,.3), 0 8px 32px rgba(168,85,247,.12), inset 0 1px 0 rgba(255,255,255,.12); }
+        }
+
+        .footer { text-align: center; margin-top: 20px; color: #98989D; font-size: 13px; }
+        .footer p { margin: 3px 0; }
+        {% endraw %}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="group-info">{{ group_name if group_name != group_id else "群" + group_id }}[{{ group_id }}]</div>
+            <div class="title">{{ title }}</div>
+            <div class="total-messages">总发言数：{{ total_messages }} 条</div>
+        </div>
+        <div class="bubble-area">
+            <div class="bubble-area-pattern"></div>
+            {% for item in user_items %}
+            {% set g1 = item.card_grad1 or '#3B82F6' %}
+            {% set g2 = item.card_grad2 or '#8B5CF6' %}
+            {% set medal_icon = "🥇" if item.rank == 1 else ("🥈" if item.rank == 2 else ("🥉" if item.rank == 3 else "")) %}
+            {% set avatar_sz = (item.bubble_size * 0.32)|int %}
+            {% set count_sz = (item.bubble_font * 1.25)|int %}
+            {% if count_sz < 12 %}{% set count_sz = 12 %}{% endif %}
+            {% set name_sz = (item.bubble_font * 0.8)|int %}
+            {% if name_sz < 10 %}{% set name_sz = 10 %}{% endif %}
+            {% set title_sz = (item.bubble_font * 0.65)|int %}
+            {% if title_sz < 9 %}{% set title_sz = 9 %}{% endif %}
+            <div class="bubble{{ ' bubble-current' if item.is_current_user else '' }}"
+                 style="width:{{ item.bubble_size }}px;height:{{ item.bubble_size }}px;
+                        left:{{ item.pos_x }}px;top:{{ item.pos_y }}px;
+                        background:linear-gradient(145deg,{{ g1 }}bb,{{ g2 }}99)">
+                <div class="glass-layer"></div>
+                <div class="glass-shine"></div>
+                {% if medal_icon %}<div class="medal">{{ medal_icon }}</div>{% endif %}
+                <div class="content">
+                    <img class="avatar" src="{{ item.avatar_url }}"
+                         style="width:{{ avatar_sz }}px;height:{{ avatar_sz }}px">
+                    <div class="count" style="font-size:{{ count_sz }}px;margin-top:3px">{{ item.total }}</div>
+                    <div class="nickname" style="font-size:{{ name_sz }}px">{{ item.nickname }}</div>
+                    {% if item.title %}
+                    <div class="title-badge"
+                         style="font-size:{{ title_sz }}px;color:#FFF;
+                                background:{{ (item.title_color or '#7C3AED') + '55' }};
+                                border:1px solid {{ (item.title_color or '#7C3AED') + '44' }}">「{{ item.title }}」</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="footer">
+            <p>🤖 由 AstrBot 发言统计插件生成</p>
+            <p>生成时间: {{ current_time }}</p>
+            {% if llm_token_info %}<p style="font-size:12px">{{ llm_token_info }}</p>{% endif %}
+        </div>
+    </div>
+</body>
+</html>
