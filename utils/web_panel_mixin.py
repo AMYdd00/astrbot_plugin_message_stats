@@ -1,5 +1,6 @@
 """Web 面板、字体管理和相关数据查询能力。"""
 
+import re
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Dict, List

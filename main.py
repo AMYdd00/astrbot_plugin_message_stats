@@ -56,7 +56,7 @@ def _install_feature_methods(*feature_classes):
     return decorator
 
 
-@register("astrbot_plugin_message_stats", "xiaoruange39", "群发言统计插件", "2.2.5")
+@register("astrbot_plugin_message_stats", "xiaoruange39", "群发言统计插件", "2.2.6")
 @_install_feature_methods(WebPanelMixin, StatsMixin, RankingMixin, HelpMixin)
 class MessageStatsPlugin(Star):
     """群发言统计插件
@@ -846,6 +846,8 @@ class MessageStatsPlugin(Star):
         group_id = event.get_group_id()
         if not group_id:
             yield event.plain_result("无法获取群组信息,请在群聊中使用此命令！")
+            async for result in self._yield_stop_command_event(event):
+                yield result
             return
 
         group_id = str(group_id)
@@ -874,6 +876,8 @@ class MessageStatsPlugin(Star):
             group_data = await self.data_manager.get_group_data(group_id)
             if not group_data:
                 yield event.plain_result("该群暂无发言数据！")
+                async for result in self._yield_stop_command_event(event):
+                    yield result
                 return
             
             target_user_data = None
@@ -890,6 +894,8 @@ class MessageStatsPlugin(Star):
             
             if not target_user_data:
                 yield event.plain_result(f"未找到该用户的发言记录！")
+                async for result in self._yield_stop_command_event(event):
+                    yield result
                 return
                 
             # 计算排名
@@ -947,8 +953,20 @@ class MessageStatsPlugin(Star):
             if self.plugin_config.if_send_pic and self.image_generator:
                 img_path = await self.image_generator.generate_personal_stats_image(data, group_info)
                 if img_path:
-                    yield event.image_result(img_path)
-                    self._schedule_file_cleanup(img_path)
+                    image_result = event.image_result(img_path)
+                    try:
+                        # QQ 官方机器人的图片结果如果继续走 AstrBot 的统一
+                        # 引用/@ 装饰流程，At 会被序列化为 <qqbot-at-user ... />
+                        # 并在部分官机群聊中作为纯文本显示。直接发送可避免
+                        # 框架再向图片消息附加 Reply/At 组件。
+                        if is_official_platform(event):
+                            await event.send(image_result)
+                        else:
+                            yield image_result
+                    finally:
+                        self._schedule_file_cleanup(img_path)
+                    async for result in self._yield_stop_command_event(event):
+                        yield result
                     return
             
             text = f"【个人发言统计】\n用户: {nickname} ({target_uid})\n"
@@ -957,11 +975,20 @@ class MessageStatsPlugin(Star):
             text += f"活跃天数: {active_days}天 | 最近互动: {target_user_data.last_date or '未知'}"
             if data['llm_title']:
                 text += f"\n当前头衔: {data['llm_title']}"
-            yield event.plain_result(text)
+            text_result = event.plain_result(text)
+            if is_official_platform(event):
+                # 与图片结果保持一致，避免官机的自动 @ 标签被当成文本。
+                await event.send(text_result)
+            else:
+                yield text_result
+            async for result in self._yield_stop_command_event(event):
+                yield result
             
         except Exception as e:
             self.logger.error(f"查看发言失败: {e}", exc_info=True)
             yield event.plain_result("查询发言记录失败,请稍后重试！")
+            async for result in self._yield_stop_command_event(event):
+                yield result
     
     # ========== 设置命令 ==========
     
